@@ -307,7 +307,7 @@ mypy src/flask_silo
 
 ## How It Was Born
 
-This library was extracted from a production **PH Analysis Hub** - a Flask + Next.js application that analyses restaurant void bills, deleted items, and staff discounts. The server needed to handle multiple concurrent users, each uploading Excel files, running AI classification tasks, reviewing results, and exporting reports - all with complete session isolation.
+This library was extracted from a production **QSR Analysis Hub** - a Flask + Next.js application that analyses restaurant void bills, deleted items, and staff discounts. The server needed to handle multiple concurrent users, each uploading Excel files, running AI classification tasks, reviewing results, and exporting reports - all with complete session isolation.
 
 The patterns that emerged (session stores, TTL cleanup daemons, 410 Gone for expired sessions, background task progress tracking, per-session file storage) proved generic enough to become a reusable library.
 
