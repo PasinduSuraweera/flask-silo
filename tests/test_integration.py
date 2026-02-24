@@ -10,9 +10,7 @@ import time
 
 import pytest
 from flask import Flask, jsonify
-
-from flask_silo import Silo, BackgroundTask
-
+from flask_silo import BackgroundTask, Silo
 
 # ── Fixtures ───────────────────────────────────────────────────────────────
 
@@ -31,18 +29,14 @@ def app_and_silo(tmp_path):
     )
 
     silo.register("data", lambda: {"items": [], "processed": False})
-    silo.register(
-        "task_ns", lambda: {"task": BackgroundTask("process")}
-    )
+    silo.register("task_ns", lambda: {"task": BackgroundTask("process")})
 
     silo.add_data_endpoints("/api/report", "/api/export")
 
     @app.route("/api/status")
     def status():
         data = silo.state("data")
-        return jsonify(
-            {"items": len(data["items"]), "processed": data["processed"]}
-        )
+        return jsonify({"items": len(data["items"]), "processed": data["processed"]})
 
     @app.route("/api/upload", methods=["POST"])
     def upload():
@@ -93,9 +87,7 @@ class TestFlaskIntegration:
         res1 = client.post("/api/upload")
         sid = res1.headers.get("X-Session-ID")
 
-        res2 = client.get(
-            "/api/status", headers={"X-Session-ID": sid}
-        )
+        res2 = client.get("/api/status", headers={"X-Session-ID": sid})
         assert res2.get_json()["items"] == 1
 
     def test_clients_isolated(self, app_and_silo):
@@ -117,14 +109,10 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = (
-            time.time() - 100
-        )
+        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
-        res = client.get(
-            "/api/report", headers={"X-Session-ID": sid}
-        )
+        res = client.get("/api/report", headers={"X-Session-ID": sid})
         assert res.status_code == 410
         assert res.get_json()["error"] == "session_expired"
 
@@ -133,14 +121,10 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = (
-            time.time() - 100
-        )
+        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
-        res = client.get(
-            "/api/export", headers={"X-Session-ID": sid}
-        )
+        res = client.get("/api/export", headers={"X-Session-ID": sid})
         assert res.status_code == 410
         body = res.get_json()
         assert "expired" in body["message"].lower()
@@ -150,14 +134,10 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = (
-            time.time() - 100
-        )
+        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
-        res = client.get(
-            "/api/status", headers={"X-Session-ID": sid}
-        )
+        res = client.get("/api/status", headers={"X-Session-ID": sid})
         assert res.status_code == 200  # creates new session
 
     def test_reupload_after_expiry(self, client, app_and_silo):
@@ -165,15 +145,11 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = (
-            time.time() - 100
-        )
+        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
         assert silo.store.is_expired(sid)
 
-        res = client.post(
-            "/api/upload", headers={"X-Session-ID": sid}
-        )
+        res = client.post("/api/upload", headers={"X-Session-ID": sid})
         assert res.status_code == 200
         assert not silo.store.is_expired(sid)
 
@@ -181,16 +157,12 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        res = client.get(
-            "/api/status", headers={"X-Session-ID": sid}
-        )
+        res = client.get("/api/status", headers={"X-Session-ID": sid})
         assert res.get_json()["items"] == 1
 
         client.post("/api/reset", headers={"X-Session-ID": sid})
 
-        res = client.get(
-            "/api/status", headers={"X-Session-ID": sid}
-        )
+        res = client.get("/api/status", headers={"X-Session-ID": sid})
         assert res.get_json()["items"] == 0
 
     def test_query_param_fallback(self, client):
@@ -221,9 +193,7 @@ class TestFileStoreIntegration:
         fs.save(sid, "test.txt", b"hello")
         assert fs.get_path(sid, "test.txt") is not None
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = (
-            time.time() - 100
-        )
+        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
         assert fs.get_path(sid, "test.txt") is None

@@ -7,7 +7,7 @@ re-upload clearing, busy-check veto, daemon start/stop, and real-time TTL.
 import time
 
 import pytest
-from flask_silo import SessionStore, CleanupDaemon
+from flask_silo import CleanupDaemon, SessionStore
 
 
 @pytest.fixture

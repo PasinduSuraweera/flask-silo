@@ -76,6 +76,22 @@ strict = true
 warn_return_any = true
 warn_unused_configs = true
 
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["pytest", "pytest.*", "_pytest", "_pytest.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["basic_app", "data_processor"]
+disallow_untyped_defs = false
+disallow_incomplete_defs = false
+ignore_errors = true
+
 [tool.coverage.run]
 source = ["flask_silo"]
 omit = ["tests/*"]

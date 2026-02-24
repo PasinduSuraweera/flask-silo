@@ -7,9 +7,10 @@ sessions and can be cleaned up individually or in bulk.
 
 from __future__ import annotations
 
+import contextlib
+import logging
 import os
 import shutil
-import logging
 from typing import BinaryIO
 
 logger = logging.getLogger("flask_silo.files")
@@ -63,9 +64,7 @@ class FileStore:
 
     # ── File operations ────────────────────────────────────────────────────
 
-    def save(
-        self, sid: str, filename: str, data: BinaryIO | bytes
-    ) -> str:
+    def save(self, sid: str, filename: str, data: BinaryIO | bytes) -> str:
         """Save a file into the session's directory.
 
         Args:
@@ -139,9 +138,7 @@ class FileStore:
                 d = os.path.join(self.base_dir, name)
                 if os.path.isdir(d):
                     shutil.rmtree(d, ignore_errors=True)
-            logger.info(
-                "Cleaned up all session directories in %s", self.base_dir
-            )
+            logger.info("Cleaned up all session directories in %s", self.base_dir)
 
     # ── Introspection ──────────────────────────────────────────────────────
 
@@ -152,8 +149,6 @@ class FileStore:
         for dirpath, _, filenames in os.walk(self.base_dir):
             for f in filenames:
                 fp = os.path.join(dirpath, f)
-                try:
+                with contextlib.suppress(OSError):
                     total += os.path.getsize(fp)
-                except OSError:
-                    pass
         return total

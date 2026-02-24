@@ -34,7 +34,7 @@ Test:
 import time
 
 from flask import Flask, jsonify, request
-from flask_silo import Silo, BackgroundTask
+from flask_silo import BackgroundTask, Silo
 
 app = Flask(__name__)
 
@@ -60,9 +60,7 @@ uploads = silo.add_file_store("uploads", "./example_uploads")
 silo.add_data_endpoints("/api/results", "/api/export")
 
 # Prevent cleanup while a task is running
-silo.store.set_busy_check(
-    lambda sid, session: session["processing"]["task"].is_running
-)
+silo.store.set_busy_check(lambda sid, session: session["processing"]["task"].is_running)
 
 
 # ── Routes ─────────────────────────────────────────────────────────────────
@@ -79,9 +77,7 @@ def upload():
     state = silo.state("processing")
     state["filepath"] = path
     state["filename"] = f.filename
-    return jsonify(
-        {"message": f"Uploaded {f.filename}", "sid": silo.sid}
-    )
+    return jsonify({"message": f"Uploaded {f.filename}", "sid": silo.sid})
 
 
 @app.route("/api/process", methods=["POST"])

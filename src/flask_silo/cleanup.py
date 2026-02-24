@@ -11,8 +11,8 @@ and test teardown.
 
 from __future__ import annotations
 
-import threading
 import logging
+import threading
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -46,7 +46,7 @@ class CleanupDaemon:
     __slots__ = ("_store", "_interval", "_thread", "_stop_event")
 
     def __init__(
-        self, store: SessionStore, interval: int | None = None
+        self, store: SessionStore, interval: int | float | None = None
     ) -> None:
         self._store = store
         self._interval = interval if interval is not None else store.cleanup_interval

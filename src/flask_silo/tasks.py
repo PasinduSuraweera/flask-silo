@@ -10,11 +10,12 @@ returned by :attr:`BackgroundTask.state`.
 
 from __future__ import annotations
 
-import time
-import threading
 import logging
+import threading
+import time
+from collections.abc import Callable
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any
 
 logger = logging.getLogger("flask_silo.tasks")
 
@@ -106,9 +107,7 @@ class BackgroundTask:
 
     # ── Lifecycle ──────────────────────────────────────────────────────────
 
-    def start(
-        self, target: Callable[..., Any], *args: Any, **kwargs: Any
-    ) -> None:
+    def start(self, target: Callable[..., Any], *args: Any, **kwargs: Any) -> None:
         """Start the task in a daemon thread.
 
         Args:
@@ -158,9 +157,7 @@ class BackgroundTask:
         """
         with self._lock:
             if self._state.running:
-                raise RuntimeError(
-                    f"Cannot reset running task '{self.name}'"
-                )
+                raise RuntimeError(f"Cannot reset running task '{self.name}'")
             self._state = TaskState()
 
     # ── Progress reporting (called by the target function) ─────────────────

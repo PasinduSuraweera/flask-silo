@@ -42,12 +42,12 @@ Quick start::
 :license: MIT - see LICENSE file.
 """
 
-from .store import SessionStore
 from .cleanup import CleanupDaemon
-from .tasks import BackgroundTask, TaskState
-from .files import FileStore
+from .errors import NamespaceError, SessionBusy, SessionExpired, SiloError
 from .ext import Silo
-from .errors import SiloError, SessionExpired, SessionBusy, NamespaceError
+from .files import FileStore
+from .store import SessionStore
+from .tasks import BackgroundTask, TaskState
 
 __version__ = "0.1.0"
 

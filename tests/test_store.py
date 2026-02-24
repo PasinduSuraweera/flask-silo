@@ -4,11 +4,11 @@ Covers: creation, namespace isolation, lifecycle (touch/destroy/reset),
 callbacks, custom SID generation, lazy namespace init, and thread safety.
 """
 
-import time
 import threading
+import time
 
 import pytest
-from flask_silo import SessionStore, NamespaceError
+from flask_silo import NamespaceError, SessionStore
 from flask_silo.errors import SessionBusy
 
 
@@ -157,9 +157,7 @@ class TestCallbacks:
         expired = []
         store.on_expire(lambda sid: expired.append(sid))
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = (
-            time.time() - store.ttl - 1
-        )
+        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - store.ttl - 1
         store.cleanup()
         assert expired == ["sid-001"]
 

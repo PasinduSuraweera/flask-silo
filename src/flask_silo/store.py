@@ -11,12 +11,14 @@ lock and the expired-SID lock are independent to minimise contention.
 
 from __future__ import annotations
 
+import contextlib
+import threading
 import time
 import uuid
-import threading
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from .errors import SessionBusy, NamespaceError
+from .errors import NamespaceError, SessionBusy
 
 
 class SessionStore:
@@ -84,8 +86,8 @@ class SessionStore:
         self._lock = threading.Lock()
         self._expired: set[tuple[str, float]] = set()
         self._expired_lock = threading.Lock()
-        self._factories: dict[str, Callable[[], dict]] = {}
-        self._busy_check: Callable[[str, dict], bool] | None = None
+        self._factories: dict[str, Callable[[], dict[str, Any]]] = {}
+        self._busy_check: Callable[[str, dict[str, Any]], bool] | None = None
         self._on_expire_cbs: list[Callable[[str], None]] = []
         self._on_create_cbs: list[Callable[[str], None]] = []
         self.ttl = ttl
@@ -96,7 +98,7 @@ class SessionStore:
     # ── Namespace registration ─────────────────────────────────────────────
 
     def register_namespace(
-        self, name: str, factory: Callable[[], dict]
+        self, name: str, factory: Callable[[], dict[str, Any]]
     ) -> None:
         """Register a state namespace with a factory function.
 
@@ -168,14 +170,12 @@ class SessionStore:
         # Fire create callbacks outside the main lock
         if is_new:
             for cb in self._on_create_cbs:
-                try:
+                with contextlib.suppress(Exception):
                     cb(sid)
-                except Exception:
-                    pass
 
         return session
 
-    def get_namespace(self, sid: str, namespace: str) -> dict:
+    def get_namespace(self, sid: str, namespace: str) -> dict[str, Any]:
         """Get state for a specific namespace.
 
         Args:
@@ -190,7 +190,7 @@ class SessionStore:
         """
         if namespace not in self._factories:
             raise NamespaceError(namespace)
-        return self.get(sid)[namespace]
+        return self.get(sid)[namespace]  # type: ignore[no-any-return]
 
     def touch(self, sid: str) -> None:
         """Update ``last_active`` without creating a new session."""
@@ -248,10 +248,8 @@ class SessionStore:
         # Fire expiry callbacks
         for sid in expired_sids:
             for cb in self._on_expire_cbs:
-                try:
+                with contextlib.suppress(Exception):
                     cb(sid)
-                except Exception:
-                    pass
 
         # Prune old entries from the expired tracker
         with self._expired_lock:
@@ -288,9 +286,7 @@ class SessionStore:
 
     # ── Configuration ──────────────────────────────────────────────────────
 
-    def set_busy_check(
-        self, predicate: Callable[[str, dict], bool]
-    ) -> None:
+    def set_busy_check(self, predicate: Callable[[str, dict[str, Any]], bool]) -> None:
         """Set a predicate controlling whether a session can be cleaned up.
 
         The predicate receives ``(sid, session_dict)`` and should return

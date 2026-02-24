@@ -10,14 +10,14 @@ lifecycle via ``before_request`` / ``after_request`` hooks.
 from __future__ import annotations
 
 import logging
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
 
-from flask import Flask, g, request, jsonify
+from flask import Flask, g, jsonify, request
 
-from .store import SessionStore
 from .cleanup import CleanupDaemon
 from .files import FileStore
-from .errors import SessionBusy
+from .store import SessionStore
 
 logger = logging.getLogger("flask_silo")
 
@@ -132,9 +132,7 @@ class Silo:
 
     # ── Namespace & file-store registration ────────────────────────────────
 
-    def register(
-        self, namespace: str, factory: Callable[[], dict]
-    ) -> None:
+    def register(self, namespace: str, factory: Callable[[], dict[str, Any]]) -> None:
         """Register a state namespace with a default factory.
 
         Must be called **before** the first request.
@@ -210,10 +208,7 @@ class Silo:
         sid = self._extract_sid()
 
         # 410 Gone for expired sessions on data-dependent endpoints
-        if (
-            self.store.is_expired(sid)
-            and request.path in self._data_endpoints
-        ):
+        if self.store.is_expired(sid) and request.path in self._data_endpoints:
             return (
                 jsonify(
                     {
@@ -245,13 +240,11 @@ class Silo:
             try:
                 fs.cleanup(sid)
             except Exception:
-                logger.exception(
-                    "Error cleaning up file store for session %s", sid
-                )
+                logger.exception("Error cleaning up file store for session %s", sid)
 
     # ── Convenience accessors ──────────────────────────────────────────────
 
-    def state(self, namespace: str | None = None) -> dict:
+    def state(self, namespace: str | None = None) -> dict[str, Any]:
         """Get session state for the **current request**.
 
         Args:
@@ -266,12 +259,10 @@ class Silo:
         """
         session = getattr(g, "silo", None)
         if session is None:
-            raise RuntimeError(
-                "No active session. Are you inside a request context?"
-            )
+            raise RuntimeError("No active session. Are you inside a request context?")
         if namespace:
-            return session[namespace]
-        return session
+            return session[namespace]  # type: ignore[no-any-return]
+        return session  # type: ignore[no-any-return]
 
     @property
     def sid(self) -> str:
@@ -280,11 +271,9 @@ class Silo:
         Raises:
             RuntimeError: If called outside a request context.
         """
-        sid = getattr(g, "silo_sid", None)
+        sid: str | None = getattr(g, "silo_sid", None)
         if sid is None:
-            raise RuntimeError(
-                "No active session. Are you inside a request context?"
-            )
+            raise RuntimeError("No active session. Are you inside a request context?")
         return sid
 
     def reset_current(self) -> None:

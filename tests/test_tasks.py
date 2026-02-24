@@ -4,12 +4,11 @@ Covers: start/complete, auto-complete, failure handling, progress clamping,
 reset, args/kwargs forwarding, timestamps, and concurrency guards.
 """
 
-import time
 import threading
+import time
 
 import pytest
 from flask_silo import BackgroundTask, TaskState
-
 
 # ── TaskState unit tests ───────────────────────────────────────────────────
 
@@ -80,7 +79,7 @@ class TestBackgroundTask:
 
         assert bg.is_failed
         assert not bg.is_running
-        assert "something broke" in bg.state.error
+        assert bg.state.error is not None and "something broke" in bg.state.error
 
     def test_explicit_fail(self):
         def work(task):

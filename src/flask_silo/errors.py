@@ -20,9 +20,7 @@ class SessionExpired(SiloError):
 
     def __init__(self, sid: str, message: str | None = None) -> None:
         self.sid = sid
-        super().__init__(
-            message or f"Session '{sid}' has expired due to inactivity."
-        )
+        super().__init__(message or f"Session '{sid}' has expired due to inactivity.")
 
 
 class SessionBusy(SiloError):
@@ -35,8 +33,7 @@ class SessionBusy(SiloError):
     def __init__(self, sid: str, message: str | None = None) -> None:
         self.sid = sid
         super().__init__(
-            message
-            or f"Session '{sid}' has active tasks and cannot be modified."
+            message or f"Session '{sid}' has active tasks and cannot be modified."
         )
 
 
@@ -50,6 +47,5 @@ class NamespaceError(SiloError):
     def __init__(self, namespace: str) -> None:
         self.namespace = namespace
         super().__init__(
-            f"Namespace '{namespace}' is not registered. "
-            f"Call register() first."
+            f"Namespace '{namespace}' is not registered. Call register() first."
         )
