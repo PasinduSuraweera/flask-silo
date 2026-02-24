@@ -8,6 +8,7 @@ import io
 import os
 
 import pytest
+
 from flask_silo import FileStore
 
 

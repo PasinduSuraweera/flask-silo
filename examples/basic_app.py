@@ -23,6 +23,7 @@ Test:
 """
 
 from flask import Flask, jsonify
+
 from flask_silo import Silo
 
 app = Flask(__name__)

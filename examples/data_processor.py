@@ -34,6 +34,7 @@ Test:
 import time
 
 from flask import Flask, jsonify, request
+
 from flask_silo import BackgroundTask, Silo
 
 app = Flask(__name__)

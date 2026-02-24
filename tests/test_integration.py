@@ -10,6 +10,7 @@ import time
 
 import pytest
 from flask import Flask, jsonify
+
 from flask_silo import BackgroundTask, Silo
 
 # ── Fixtures ───────────────────────────────────────────────────────────────

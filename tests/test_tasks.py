@@ -8,6 +8,7 @@ import threading
 import time
 
 import pytest
+
 from flask_silo import BackgroundTask, TaskState
 
 # ── TaskState unit tests ───────────────────────────────────────────────────
