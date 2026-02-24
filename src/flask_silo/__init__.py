@@ -50,7 +50,7 @@ from .storage import InMemoryStorage, SiloStorage
 from .store import SessionStore
 from .tasks import BackgroundTask, TaskState
 
-__version__ = "0.1.6"
+__version__ = "1.7.0"
 
 __all__ = [
     # Extension (main entry point)
