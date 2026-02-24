@@ -289,6 +289,48 @@ if (response.status === 410) {
 }
 ```
 
+## Limitations & When Not to Use
+
+Flask-Silo stores session state **in-process** (Python dicts) and files on **local disk**. This is an intentional design choice for simplicity, but it comes with trade-offs you should understand:
+
+### Single-process only
+
+If you deploy with multiple workers (`gunicorn -w 4`), each worker gets its own `_sessions` dict. A request hitting Worker A cannot see sessions created by Worker B. **You must run with a single worker** (`gunicorn -w 1`) or use a sticky-session load balancer.
+
+For multi-worker / multi-server deployments, use **Flask-Session** backed by Redis or a database instead.
+
+### In-memory state is volatile
+
+All session data lives in process memory. If the server restarts, all sessions are lost. There is no persistence layer.
+
+### Not a replacement for a task queue
+
+`BackgroundTask` runs work in daemon threads inside the web process. This is fine for lightweight jobs (data transformation, report generation), but it is **not** a substitute for Celery or RQ if you need:
+
+- Retries, rate limiting, or scheduling
+- Tasks that survive server restarts
+- Distributed execution across multiple machines
+
+### Concurrent mutations to the same SID
+
+The `SessionStore` lock protects session creation and cleanup, but the returned session dict is a plain mutable reference. If two concurrent requests share the same SID and mutate the same namespace simultaneously, there is no per-namespace locking. In practice this is rare (one client = one SID, requests are serial), but it is not guarded against.
+
+### When Flask-Silo is a good fit
+
+- Internal tools, prototypes, and dashboards with a small number of concurrent users
+- Stateful workflows (upload -> process -> download) where setting up Redis/Celery is overkill
+- Single-process deployments behind Gunicorn, Waitress, or the Flask dev server
+- Applications where losing sessions on restart is acceptable
+
+### When to use something else
+
+| Need | Use instead |
+|---|---|
+| Multi-worker / multi-server sessions | Flask-Session + Redis |
+| Durable background jobs | Celery or RQ |
+| Shared file storage across servers | AWS S3 / MinIO / shared volume |
+| Persistent state across restarts | Database (PostgreSQL, SQLite) |
+
 ## Testing
 
 ```bash
