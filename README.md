@@ -13,7 +13,7 @@
 
 ## The Problem
 
-Flask apps handling stateful workflows (file upload → process → report) need per-client state isolation. Without it:
+Flask apps handling stateful workflows (file upload -> process -> report) need per-client state isolation. Without it:
 
 - User A's upload overwrites User B's data
 - Background tasks corrupt each other's progress
@@ -70,11 +70,11 @@ def count():
 ```bash
 # Client A
 curl -X POST http://localhost:5000/api/increment
-# → {"sid": "a1b2c3...", "value": 1}
+# -> {"sid": "a1b2c3...", "value": 1}
 
 # Client B (different session)
 curl http://localhost:5000/api/count
-# → {"value": 0}  ← isolated!
+# -> {"value": 0}  <-- isolated!
 ```
 
 ## Full-Featured Example
@@ -138,31 +138,31 @@ def reset():
 ## Architecture
 
 ```
-┌─────────────────────────────────────────────────────────────┐
-│                        Flask App                            │
-│                                                             │
-│  ┌───────────────────────────────────────────────────────┐  │
-│  │                    Silo (Extension)                    │  │
-│  │                                                       │  │
-│  │  before_request ──→ Extract SID ──→ Load/Create State │  │
-│  │  after_request  ──→ Set X-Session-ID header           │  │
-│  │                                                       │  │
-│  │  ┌─────────────┐  ┌──────────────┐  ┌─────────────┐  │  │
-│  │  │SessionStore │  │CleanupDaemon │  │ FileStore(s)│  │  │
-│  │  │             │  │              │  │             │  │  │
-│  │  │ _sessions{} │◄─│ cleanup()    │  │ base_dir/   │  │  │
-│  │  │ _expired{}  │  │ every 60s    │──│  {sid}/     │  │  │
-│  │  │ _factories{}│  │              │  │   files...  │  │  │
-│  │  └─────────────┘  └──────────────┘  └─────────────┘  │  │
-│  │                                                       │  │
-│  │  Session Dict:                                        │  │
-│  │  ┌──────────────────────────────────────────────────┐ │  │
-│  │  │ { 'namespace_a': {...},                          │ │  │
-│  │  │   'namespace_b': {..., task: BackgroundTask},    │ │  │
-│  │  │   '_meta': {created_at, last_active, sid} }      │ │  │
-│  │  └──────────────────────────────────────────────────┘ │  │
-│  └───────────────────────────────────────────────────────┘  │
-└─────────────────────────────────────────────────────────────┘
++-------------------------------------------------------------+
+|                        Flask App                            |
+|                                                             |
+|  +-------------------------------------------------------+  |
+|  |                    Silo (Extension)                   |  |
+|  |                                                       |  |
+|  |  before_request --> Extract SID --> Load/Create State |  |
+|  |  after_request  --> Set X-Session-ID header           |  |
+|  |                                                       |  |
+|  |  +-------------+  +--------------+  +-------------+   |  |
+|  |  |SessionStore |  |CleanupDaemon |  | FileStore(s)|   |  |
+|  |  |             |  |              |  |             |   |  |
+|  |  | _sessions{} |<-| cleanup()    |  | base_dir/   |   |  |
+|  |  | _expired{}  |  | every 60s    |--| {sid}/      |   |  |
+|  |  | _factories{}|  |              |  |   files...  |   |  |
+|  |  +-------------+  +--------------+  +-------------+   |  |
+|  |                                                       |  |
+|  |  Session Dict:                                        |  |
+|  |  +--------------------------------------------------+ |  |
+|  |  | { 'namespace_a': {...},                          | |  |
+|  |  |   'namespace_b': {..., task: BackgroundTask},    | |  |
+|  |  |   '_meta': {created_at, last_active, sid} }      | |  |
+|  |  +--------------------------------------------------+ |  |
+|  +-------------------------------------------------------+  |
++-------------------------------------------------------------+
 ```
 
 ## API Reference
@@ -268,15 +268,15 @@ When a session expires, instead of silently creating a new empty session, Flask-
 
 ```
 Client                    Server
-  │                         │
-  ├── Upload file ────────► │  ✓ Session created (SID: abc)
-  │                         │
-  │   ... 1 hour passes ... │
-  │                         │  ← Cleanup daemon expires SID abc
-  │                         │
-  ├── GET /api/report ────► │  410 Gone (SID abc was expired)
-  │                         │
-  └── Upload file ────────► │  ✓ Session re-created (same SID)
+  |                         |
+  |-- Upload file --------> |  Session created (SID: abc)
+  |                         |
+  |   ... 1 hour passes ... |
+  |                         |  <-- Cleanup daemon expires SID abc
+  |                         |
+  |-- GET /api/report ----> |  410 Gone (SID abc was expired)
+  |                         |
+  |-- Upload file --------> |  Session re-created (same SID)
 ```
 
 This enables clean frontend handling:
