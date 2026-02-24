@@ -19,7 +19,7 @@ class FileStore:
     """Manages per-session file directories with automatic lifecycle.
 
     Each session gets its own subdirectory under *base_dir*.  When a
-    session expires, call :meth:`cleanup` to remove its files — or let
+    session expires, call :meth:`cleanup` to remove its files - or let
     :class:`~flask_silo.ext.Silo` do it automatically via the
     ``on_expire`` callback.
 

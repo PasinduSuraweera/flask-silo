@@ -1,5 +1,5 @@
 """
-Basic Flask-Silo example — Session-isolated counter API.
+Basic Flask-Silo example - Session-isolated counter API.
 
 Each client (identified by X-Session-ID header) gets their own counter.
 Sessions expire after 5 minutes of inactivity.
@@ -30,7 +30,7 @@ app = Flask(__name__)
 # Initialise Flask-Silo with 5-minute TTL
 silo = Silo(app, ttl=300)
 
-# Register a "counter" namespace — each client gets their own independent copy
+# Register a "counter" namespace - each client gets their own independent copy
 silo.register("counter", lambda: {"value": 0, "history": []})
 
 # These endpoints return 410 Gone if the session expired
@@ -69,8 +69,8 @@ def reset():
 
 if __name__ == "__main__":
     print("\n  Flask-Silo Counter Example")
-    print("  POST /api/increment  — increment counter")
-    print("  GET  /api/count      — current value")
-    print("  GET  /api/history    — increment history")
-    print("  POST /api/reset      — reset counter\n")
+    print("  POST /api/increment  - increment counter")
+    print("  GET  /api/count      - current value")
+    print("  GET  /api/history    - increment history")
+    print("  POST /api/reset      - reset counter\n")
     app.run(debug=True, port=5000)

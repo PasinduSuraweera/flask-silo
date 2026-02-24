@@ -1,17 +1,17 @@
-"""Flask-Silo — Session-isolated state management for Flask APIs.
+"""Flask-Silo - Session-isolated state management for Flask APIs.
 
 A production-grade library for managing per-client state in Flask
 applications.  Born from real-world data-processing pipelines, Flask-Silo
 provides:
 
-* **Session Isolation** — each client gets independent state via
+* **Session Isolation** - each client gets independent state via
   header-based session IDs.
-* **TTL Enforcement** — daemon-thread cleanup with configurable
+* **TTL Enforcement** - daemon-thread cleanup with configurable
   time-to-live.
-* **410 Gone Pattern** — detect returning expired clients and prompt
+* **410 Gone Pattern** - detect returning expired clients and prompt
   re-upload.
-* **Background Tasks** — thread-based task runner with progress tracking.
-* **File Management** — per-session upload directories with automatic
+* **Background Tasks** - thread-based task runner with progress tracking.
+* **File Management** - per-session upload directories with automatic
   cleanup.
 
 Quick start::
@@ -39,7 +39,7 @@ Quick start::
         return jsonify(state['data'])
 
 :copyright: (c) 2026.
-:license: MIT — see LICENSE file.
+:license: MIT - see LICENSE file.
 """
 
 from .store import SessionStore

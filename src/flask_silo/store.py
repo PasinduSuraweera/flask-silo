@@ -5,7 +5,7 @@ and contains one or more *namespaces*, each initialised by a registered
 factory function.  The store handles creation, access, TTL-based cleanup,
 expired-SID tracking (for the 410 Gone pattern), and lifecycle callbacks.
 
-Thread-safety is guaranteed through fine-grained locking — the session dict
+Thread-safety is guaranteed through fine-grained locking - the session dict
 lock and the expired-SID lock are independent to minimise contention.
 """
 
@@ -24,16 +24,16 @@ class SessionStore:
 
     Features
     --------
-    * **Namespace isolation** — register multiple independent state dicts per
+    * **Namespace isolation** - register multiple independent state dicts per
       session via :meth:`register_namespace`.
-    * **TTL cleanup** — :meth:`cleanup` removes sessions whose
+    * **TTL cleanup** - :meth:`cleanup` removes sessions whose
       ``last_active`` exceeded *ttl* seconds ago.
-    * **Expired-SID tracking** — recently-cleaned-up SIDs are remembered for
+    * **Expired-SID tracking** - recently-cleaned-up SIDs are remembered for
       *expired_retain* seconds so the server can reply 410 Gone instead of
       silently creating new sessions.
-    * **Busy-check predicate** — a user-supplied callable can veto cleanup
+    * **Busy-check predicate** - a user-supplied callable can veto cleanup
       of sessions that are "busy" (e.g. running a background task).
-    * **Lifecycle callbacks** — ``on_create`` / ``on_expire`` hooks.
+    * **Lifecycle callbacks** - ``on_create`` / ``on_expire`` hooks.
 
     Example::
 
@@ -138,7 +138,7 @@ class SessionStore:
         * If the SID does not exist, a new session is created with all
           registered namespaces and the ``on_create`` callbacks fire.
         * If the SID was previously marked as expired (e.g. after TTL
-          cleanup), it is removed from the expired tracker — this enables
+          cleanup), it is removed from the expired tracker - this enables
           the "re-upload after expiry" pattern.
         * Any namespaces registered *after* this session was created are
           lazily initialised.
@@ -153,7 +153,7 @@ class SessionStore:
             is_new = sid not in self._sessions
             if is_new:
                 self._sessions[sid] = self._create_session(sid)
-                # Clear from expired tracker — user is re-uploading
+                # Clear from expired tracker - user is re-uploading
                 with self._expired_lock:
                     self._expired.difference_update(
                         {(s, t) for s, t in self._expired if s == sid}

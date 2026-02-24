@@ -4,7 +4,7 @@ Wraps :meth:`SessionStore.cleanup <flask_silo.store.SessionStore.cleanup>`
 in a stoppable daemon thread that runs at a configurable interval.
 
 The thread is marked as a *daemon*, so it dies automatically when the
-main process exits — no explicit teardown is required in production,
+main process exits - no explicit teardown is required in production,
 though :meth:`CleanupDaemon.stop` is available for graceful shutdown
 and test teardown.
 """
@@ -40,7 +40,7 @@ class CleanupDaemon:
         daemon = CleanupDaemon(store, interval=60)
         daemon.start()
         # ...
-        daemon.stop()   # optional — daemon thread dies with the process
+        daemon.stop()   # optional - daemon thread dies with the process
     """
 
     __slots__ = ("_store", "_interval", "_thread", "_stop_event")

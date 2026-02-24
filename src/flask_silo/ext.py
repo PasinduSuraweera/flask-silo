@@ -49,7 +49,7 @@ class Silo:
     Parameters
     ----------
     app:
-        Flask application (optional — use :meth:`init_app` for factories).
+        Flask application (optional - use :meth:`init_app` for factories).
     ttl:
         Session time-to-live in seconds (default 3 600).
     cleanup_interval:
@@ -63,7 +63,7 @@ class Silo:
     min_sid_length:
         Minimum length to accept a client-supplied SID (default 16).
     data_endpoints:
-        URL paths that require existing data — expired sessions hitting
+        URL paths that require existing data - expired sessions hitting
         these get a 410 response.
     auto_cleanup:
         Start the cleanup daemon automatically (default ``True``).

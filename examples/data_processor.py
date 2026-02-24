@@ -1,5 +1,5 @@
 """
-Full-featured Flask-Silo example — File upload + background processing.
+Full-featured Flask-Silo example - File upload + background processing.
 
 Demonstrates all major Flask-Silo features:
   - Session-isolated state with multiple namespaces
@@ -164,10 +164,10 @@ def reset():
 if __name__ == "__main__":
     print("\n  Flask-Silo Data Processor Example")
     print("  ─────────────────────────────────")
-    print("  POST /api/upload   — upload a file")
-    print("  POST /api/process  — start processing")
-    print("  GET  /api/progress — poll progress")
-    print("  GET  /api/results  — get results")
-    print("  GET  /api/status   — session status")
-    print("  POST /api/reset    — clear everything\n")
+    print("  POST /api/upload   - upload a file")
+    print("  POST /api/process  - start processing")
+    print("  GET  /api/progress - poll progress")
+    print("  GET  /api/results  - get results")
+    print("  GET  /api/status   - session status")
+    print("  POST /api/reset    - clear everything\n")
     app.run(debug=True, port=5000)

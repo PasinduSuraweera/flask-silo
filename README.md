@@ -9,7 +9,7 @@
 
 ---
 
-**Flask-Silo** gives each API client its own isolated state — like giving every user their own private workspace on the server. Born from production data-processing pipelines where multiple users upload files, run background tasks, and generate reports simultaneously.
+**Flask-Silo** gives each API client its own isolated state - like giving every user their own private workspace on the server. Born from production data-processing pipelines where multiple users upload files, run background tasks, and generate reports simultaneously.
 
 ## The Problem
 
@@ -53,7 +53,7 @@ from flask_silo import Silo
 app = Flask(__name__)
 silo = Silo(app, ttl=3600)  # 1-hour sessions
 
-# Register a namespace — each client gets their own copy
+# Register a namespace - each client gets their own copy
 silo.register('counter', lambda: {'value': 0})
 
 @app.route('/api/increment', methods=['POST'])
@@ -167,7 +167,7 @@ def reset():
 
 ## API Reference
 
-### `Silo` — Flask Extension
+### `Silo` - Flask Extension
 
 ```python
 silo = Silo(
@@ -195,7 +195,7 @@ silo = Silo(
 | `silo.init_app(app)` | Deferred initialisation (factory pattern) |
 | `silo.stop()` | Stop cleanup daemon |
 
-### `SessionStore` — Core State Manager
+### `SessionStore` - Core State Manager
 
 ```python
 store = SessionStore(ttl=3600, cleanup_interval=60, expired_retain=7200)
@@ -218,7 +218,7 @@ store.register_namespace('ns', lambda: {'key': 'value'})
 | `store.active_count` | Number of active sessions |
 | `store.expired_count` | Number of tracked expired SIDs |
 
-### `BackgroundTask` — Progress-Tracked Threading
+### `BackgroundTask` - Progress-Tracked Threading
 
 ```python
 task = BackgroundTask('classify')
@@ -244,7 +244,7 @@ task.start(work, '/path/to/file')
 | `task.is_complete` | Finished successfully? |
 | `task.is_failed` | Failed with error? |
 
-### `FileStore` — Per-Session File Management
+### `FileStore` - Per-Session File Management
 
 ```python
 fs = FileStore('/tmp/uploads')
@@ -284,7 +284,7 @@ This enables clean frontend handling:
 ```javascript
 if (response.status === 410) {
   clearSession();
-  showToast('Session expired — please re-upload');
+  showToast('Session expired - please re-upload');
   redirect('/upload');
 }
 ```
@@ -307,7 +307,7 @@ mypy src/flask_silo
 
 ## How It Was Born
 
-This library was extracted from a production **PH Analysis Hub** — a Flask + Next.js application that analyses restaurant void bills, deleted items, and staff discounts. The server needed to handle multiple concurrent users, each uploading Excel files, running AI classification tasks, reviewing results, and exporting reports — all with complete session isolation.
+This library was extracted from a production **PH Analysis Hub** - a Flask + Next.js application that analyses restaurant void bills, deleted items, and staff discounts. The server needed to handle multiple concurrent users, each uploading Excel files, running AI classification tasks, reviewing results, and exporting reports - all with complete session isolation.
 
 The patterns that emerged (session stores, TTL cleanup daemons, 410 Gone for expired sessions, background task progress tracking, per-session file storage) proved generic enough to become a reusable library.
 
