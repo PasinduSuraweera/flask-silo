@@ -110,7 +110,7 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
+        silo.store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
         res = client.get("/api/report", headers={"X-Session-ID": sid})
@@ -122,7 +122,7 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
+        silo.store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
         res = client.get("/api/export", headers={"X-Session-ID": sid})
@@ -135,7 +135,7 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
+        silo.store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
         res = client.get("/api/status", headers={"X-Session-ID": sid})
@@ -146,7 +146,7 @@ class TestFlaskIntegration:
         res = client.post("/api/upload")
         sid = res.headers.get("X-Session-ID")
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
+        silo.store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
         assert silo.store.is_expired(sid)
 
@@ -194,7 +194,7 @@ class TestFileStoreIntegration:
         fs.save(sid, "test.txt", b"hello")
         assert fs.get_path(sid, "test.txt") is not None
 
-        silo.store._sessions[sid]["_meta"]["last_active"] = time.time() - 100
+        silo.store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 100
         silo.store.cleanup()
 
         assert fs.get_path(sid, "test.txt") is None

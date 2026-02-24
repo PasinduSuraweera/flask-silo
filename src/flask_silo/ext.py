@@ -17,6 +17,7 @@ from flask import Flask, g, jsonify, request
 
 from .cleanup import CleanupDaemon
 from .files import FileStore
+from .storage import SiloStorage
 from .store import SessionStore
 
 logger = logging.getLogger("flask_silo")
@@ -69,6 +70,10 @@ class Silo:
         Start the cleanup daemon automatically (default ``True``).
     api_prefix:
         URL prefix that triggers session handling (default ``/api/``).
+    storage:
+        Storage backend instance (default :class:`InMemoryStorage`).
+        Pass a :class:`~flask_silo.redis_storage.RedisStorage` for
+        multi-worker deployments.
     """
 
     def __init__(
@@ -84,6 +89,7 @@ class Silo:
         data_endpoints: set[str] | None = None,
         auto_cleanup: bool = True,
         api_prefix: str = "/api/",
+        storage: SiloStorage | None = None,
     ) -> None:
         self._header = header
         self._query_param = query_param
@@ -97,6 +103,7 @@ class Silo:
             ttl=ttl,
             cleanup_interval=cleanup_interval,
             expired_retain=expired_retain,
+            storage=storage,
         )
         self._daemon = CleanupDaemon(self.store, interval=cleanup_interval)
 
@@ -228,8 +235,11 @@ class Silo:
         return None
 
     def _after_request(self, response: Any) -> Any:
-        """Add the session ID to response headers."""
+        """Add the session ID to response headers and persist state."""
         sid = getattr(g, "silo_sid", None)
+        session = getattr(g, "silo", None)
+        if sid and session:
+            self.store.save(sid, session)
         if sid:
             response.headers[self._header] = sid
         return response

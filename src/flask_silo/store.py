@@ -5,8 +5,10 @@ and contains one or more *namespaces*, each initialised by a registered
 factory function.  The store handles creation, access, TTL-based cleanup,
 expired-SID tracking (for the 410 Gone pattern), and lifecycle callbacks.
 
-Thread-safety is guaranteed through fine-grained locking - the session dict
-lock and the expired-SID lock are independent to minimise contention.
+The underlying data layer is pluggable via :class:`~flask_silo.storage.SiloStorage`.
+By default an :class:`~flask_silo.storage.InMemoryStorage` backend is used.
+Thread-safety is guaranteed through a process-local lock that coordinates
+all access to the storage backend.
 """
 
 from __future__ import annotations
@@ -19,6 +21,7 @@ from collections.abc import Callable
 from typing import Any
 
 from .errors import NamespaceError, SessionBusy
+from .storage import InMemoryStorage, SiloStorage
 
 
 class SessionStore:
@@ -26,7 +29,9 @@ class SessionStore:
 
     Features
     --------
-    * **Namespace isolation** - register multiple independent state dicts per
+    * **Pluggable storage** – defaults to :class:`InMemoryStorage` but
+      accepts any :class:`SiloStorage` backend (e.g. Redis).
+    * **Namespace isolation** – register multiple independent state dicts per
       session via :meth:`register_namespace`.
     * **TTL cleanup** - :meth:`cleanup` removes sessions whose
       ``last_active`` exceeded *ttl* seconds ago.
@@ -57,13 +62,13 @@ class SessionStore:
     sid_generator:
         Custom callable returning a new SID string.  Defaults to
         ``uuid.uuid4().hex``.
+    storage:
+        Storage backend instance.  Defaults to :class:`InMemoryStorage`.
     """
 
     __slots__ = (
-        "_sessions",
+        "storage",
         "_lock",
-        "_expired",
-        "_expired_lock",
         "_factories",
         "_busy_check",
         "_on_expire_cbs",
@@ -81,11 +86,10 @@ class SessionStore:
         cleanup_interval: int = 60,
         expired_retain: int = 7200,
         sid_generator: Callable[[], str] | None = None,
+        storage: SiloStorage | None = None,
     ) -> None:
-        self._sessions: dict[str, dict[str, Any]] = {}
+        self.storage: SiloStorage = storage or InMemoryStorage()
         self._lock = threading.Lock()
-        self._expired: set[tuple[str, float]] = set()
-        self._expired_lock = threading.Lock()
         self._factories: dict[str, Callable[[], dict[str, Any]]] = {}
         self._busy_check: Callable[[str, dict[str, Any]], bool] | None = None
         self._on_expire_cbs: list[Callable[[str], None]] = []
@@ -152,20 +156,19 @@ class SessionStore:
             The full session dict (namespace keys + ``_meta``).
         """
         with self._lock:
-            is_new = sid not in self._sessions
+            session = self.storage.get_session(sid)
+            is_new = session is None
             if is_new:
-                self._sessions[sid] = self._create_session(sid)
+                session = self._create_session(sid)
                 # Clear from expired tracker - user is re-uploading
-                with self._expired_lock:
-                    self._expired.difference_update(
-                        {(s, t) for s, t in self._expired if s == sid}
-                    )
-            session = self._sessions[sid]
+                self.storage.clear_expired(sid)
+            assert session is not None  # guaranteed by branch above
             # Lazy-init namespaces added after session creation
             for ns, factory in self._factories.items():
                 if ns not in session:
                     session[ns] = factory()
             session["_meta"]["last_active"] = time.time()
+            self.storage.set_session(sid, session)
 
         # Fire create callbacks outside the main lock
         if is_new:
@@ -195,13 +198,15 @@ class SessionStore:
     def touch(self, sid: str) -> None:
         """Update ``last_active`` without creating a new session."""
         with self._lock:
-            if sid in self._sessions:
-                self._sessions[sid]["_meta"]["last_active"] = time.time()
+            session = self.storage.get_session(sid)
+            if session is not None:
+                session["_meta"]["last_active"] = time.time()
+                self.storage.set_session(sid, session)
 
     def exists(self, sid: str) -> bool:
         """Check whether a session is active (not expired)."""
         with self._lock:
-            return sid in self._sessions
+            return self.storage.has_session(sid)
 
     def is_expired(self, sid: str) -> bool:
         """Check whether a SID was recently expired due to TTL.
@@ -210,8 +215,8 @@ class SessionStore:
         their session was cleaned up, the server can detect this and respond
         with ``410`` instead of silently creating a new empty session.
         """
-        with self._expired_lock:
-            return any(s == sid for s, _ in self._expired)
+        with self._lock:
+            return self.storage.is_expired(sid)
 
     # ── Cleanup ────────────────────────────────────────────────────────────
 
@@ -232,18 +237,14 @@ class SessionStore:
         expired_sids: list[str] = []
 
         with self._lock:
-            stale = []
-            for sid, session in self._sessions.items():
+            for sid, session in self.storage.all_sessions():
                 age = now - session["_meta"]["last_active"]
                 if age > self.ttl:
                     if self._busy_check and self._busy_check(sid, session):
                         continue  # skip busy sessions
-                    stale.append(sid)
-            for sid in stale:
-                del self._sessions[sid]
-                expired_sids.append(sid)
-                with self._expired_lock:
-                    self._expired.add((sid, now))
+                    self.storage.delete_session(sid)
+                    self.storage.mark_expired(sid, now)
+                    expired_sids.append(sid)
 
         # Fire expiry callbacks
         for sid in expired_sids:
@@ -252,10 +253,8 @@ class SessionStore:
                     cb(sid)
 
         # Prune old entries from the expired tracker
-        with self._expired_lock:
-            self._expired.difference_update(
-                {(s, t) for s, t in self._expired if now - t > self.expired_retain}
-            )
+        with self._lock:
+            self.storage.prune_expired(self.expired_retain)
 
         return expired_sids
 
@@ -273,16 +272,16 @@ class SessionStore:
             SessionBusy: If the busy-check predicate returns ``True``.
         """
         with self._lock:
-            if sid in self._sessions:
-                session = self._sessions[sid]
+            session = self.storage.get_session(sid)
+            if session is not None:
                 if self._busy_check and self._busy_check(sid, session):
                     raise SessionBusy(sid)
-                self._sessions[sid] = self._create_session(sid)
+                self.storage.set_session(sid, self._create_session(sid))
 
     def destroy(self, sid: str) -> None:
         """Completely remove a session **without** tracking it as expired."""
         with self._lock:
-            self._sessions.pop(sid, None)
+            self.storage.delete_session(sid)
 
     # ── Configuration ──────────────────────────────────────────────────────
 
@@ -327,16 +326,34 @@ class SessionStore:
     def active_count(self) -> int:
         """Number of currently active sessions."""
         with self._lock:
-            return len(self._sessions)
+            return self.storage.session_count()
 
     @property
     def expired_count(self) -> int:
         """Number of tracked expired session IDs."""
-        with self._expired_lock:
-            return len(self._expired)
+        with self._lock:
+            return self.storage.expired_count()
 
     @property
     def all_sids(self) -> list[str]:
         """List of all active session IDs (snapshot)."""
         with self._lock:
-            return list(self._sessions.keys())
+            return self.storage.all_sids()
+
+    # ── Persistence ────────────────────────────────────────────────────────
+
+    def save(self, sid: str, session: dict[str, Any]) -> None:
+        """Persist session changes to the storage backend.
+
+        Called automatically by :class:`~flask_silo.ext.Silo` in the
+        ``after_request`` hook.  For :class:`InMemoryStorage` this is
+        effectively a no-op (the dict is already a live reference); for
+        external backends (Redis, etc.) this writes the modified session
+        back to the data store.
+
+        Args:
+            sid: Session identifier.
+            session: The session dict to persist.
+        """
+        with self._lock:
+            self.storage.set_session(sid, session)

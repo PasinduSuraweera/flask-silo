@@ -48,6 +48,9 @@ dev = [
     "ruff>=0.4",
     "mypy>=1.0",
 ]
+redis = [
+    "redis>=4.0",
+]
 
 [project.urls]
 Homepage = "https://github.com/yourusername/flask-silo"
@@ -84,6 +87,10 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = ["pytest", "pytest.*", "_pytest", "_pytest.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["redis", "redis.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]

@@ -158,7 +158,9 @@ class TestCallbacks:
         expired = []
         store.on_expire(lambda sid: expired.append(sid))
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - store.ttl - 1
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = (
+            time.time() - store.ttl - 1
+        )
         store.cleanup()
         assert expired == ["sid-001"]
 

@@ -24,7 +24,7 @@ def store():
 class TestCleanup:
     def test_stale_session_removed(self, store):
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - 10
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = time.time() - 10
         expired = store.cleanup()
         assert "sid-001" in expired
         assert not store.exists("sid-001")
@@ -37,18 +37,18 @@ class TestCleanup:
 
     def test_expired_sid_tracked(self, store):
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - 10
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = time.time() - 10
         store.cleanup()
         assert store.is_expired("sid-001")
 
     def test_expired_sid_pruned_after_retain(self, store):
-        store._expired.add(("old-sid", time.time() - store.expired_retain - 1))
+        store.storage.mark_expired("old-sid", time.time() - store.expired_retain - 1)
         store.cleanup()
         assert not store.is_expired("old-sid")
 
     def test_reupload_clears_expired(self, store):
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - 10
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = time.time() - 10
         store.cleanup()
         assert store.is_expired("sid-001")
         store.get("sid-001")  # re-create
@@ -57,7 +57,7 @@ class TestCleanup:
     def test_busy_check_prevents_cleanup(self, store):
         store.set_busy_check(lambda sid, s: s["data"]["value"] == "busy")
         store.get("sid-001")["data"]["value"] = "busy"
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - 10
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = time.time() - 10
         expired = store.cleanup()
         assert expired == []
         assert store.exists("sid-001")
@@ -66,7 +66,7 @@ class TestCleanup:
         for i in range(3):
             sid = f"sid-{i:03d}"
             store.get(sid)
-            store._sessions[sid]["_meta"]["last_active"] = time.time() - 10
+            store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 10
         store.cleanup()
         assert store.expired_count == 3
 
@@ -74,7 +74,7 @@ class TestCleanup:
         for i in range(5):
             sid = f"sid-{i:03d}"
             store.get(sid)
-            store._sessions[sid]["_meta"]["last_active"] = time.time() - 10
+            store.storage.get_session(sid)["_meta"]["last_active"] = time.time() - 10
         expired = store.cleanup()
         assert len(expired) == 5
         assert store.active_count == 0
@@ -99,7 +99,7 @@ class TestCleanupDaemon:
 
     def test_daemon_cleans_stale_sessions(self, store):
         store.get("sid-001")
-        store._sessions["sid-001"]["_meta"]["last_active"] = time.time() - 10
+        store.storage.get_session("sid-001")["_meta"]["last_active"] = time.time() - 10
         daemon = CleanupDaemon(store, interval=0.3)
         daemon.start()
         time.sleep(1)

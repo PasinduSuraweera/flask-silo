@@ -27,6 +27,7 @@ Flask apps handling stateful workflows (file upload -> process -> report) need p
 | Feature | Description |
 |---|---|
 | **Session Isolation** | Each client gets independent state via `X-Session-ID` header |
+| **Pluggable Storage** | In-memory (default) or Redis for multi-worker deployments |
 | **TTL Enforcement** | Daemon thread automatically cleans up idle sessions |
 | **410 Gone Pattern** | Expired clients get `410` on data endpoints (not a silent empty session) |
 | **Background Tasks** | Thread-based runner with progress %, log entries, and completion status |
@@ -145,21 +146,21 @@ def reset():
 |  |                    Silo (Extension)                   |  |
 |  |                                                       |  |
 |  |  before_request --> Extract SID --> Load/Create State |  |
-|  |  after_request  --> Set X-Session-ID header           |  |
+|  |  after_request  --> Save State + Set X-Session-ID     |  |
 |  |                                                       |  |
 |  |  +-------------+  +--------------+  +-------------+   |  |
 |  |  |SessionStore |  |CleanupDaemon |  | FileStore(s)|   |  |
 |  |  |             |  |              |  |             |   |  |
-|  |  | _sessions{} |<-| cleanup()    |  | base_dir/   |   |  |
-|  |  | _expired{}  |  | every 60s    |--| {sid}/      |   |  |
+|  |  | SiloStorage |<-| cleanup()    |  | base_dir/   |   |  |
+|  |  | (pluggable) |  | every 60s    |--| {sid}/      |   |  |
 |  |  | _factories{}|  |              |  |   files...  |   |  |
 |  |  +-------------+  +--------------+  +-------------+   |  |
 |  |                                                       |  |
-|  |  Session Dict:                                        |  |
+|  |  Storage Backends:                                    |  |
 |  |  +--------------------------------------------------+ |  |
-|  |  | { 'namespace_a': {...},                          | |  |
-|  |  |   'namespace_b': {..., task: BackgroundTask},    | |  |
-|  |  |   '_meta': {created_at, last_active, sid} }      | |  |
+|  |  | InMemoryStorage (default) - dict-based, fast     | |  |
+|  |  | RedisStorage             - multi-worker ready    | |  |
+|  |  | Custom                   - implement SiloStorage | |  |
 |  |  +--------------------------------------------------+ |  |
 |  +-------------------------------------------------------+  |
 +-------------------------------------------------------------+
@@ -180,6 +181,7 @@ silo = Silo(
     min_sid_length=16,     # Minimum SID length to accept
     auto_cleanup=True,     # Start cleanup daemon automatically
     api_prefix="/api/",    # URL prefix triggering session handling
+    storage=None,          # SiloStorage backend (default: InMemoryStorage)
 )
 ```
 
@@ -262,6 +264,70 @@ fs.cleanup('sid-123')
 | `fs.cleanup_all()` | Remove all session dirs |
 | `fs.total_size_bytes` | Total disk usage |
 
+## Storage Backends
+
+Flask-Silo uses a pluggable storage interface. The default is `InMemoryStorage` (dict-based, single-process). For multi-worker deployments, use `RedisStorage`.
+
+### Default (In-Memory)
+
+```python
+from flask_silo import Silo
+
+# InMemoryStorage is used automatically - no config needed
+silo = Silo(app, ttl=3600)
+```
+
+### Redis (Multi-Worker)
+
+```bash
+pip install flask-silo[redis]
+```
+
+```python
+import redis
+from flask_silo import Silo
+from flask_silo.redis_storage import RedisStorage
+
+r = redis.Redis(host="localhost", port=6379, db=0)
+storage = RedisStorage(r, prefix="myapp", session_ttl=7200)
+
+silo = Silo(app, ttl=3600, storage=storage)
+```
+
+With Redis, multiple Gunicorn workers share the same session state:
+
+```bash
+gunicorn -w 4 app:app  # all 4 workers share sessions via Redis
+```
+
+> **Note:** `RedisStorage` serialises sessions as JSON. Objects like
+> `BackgroundTask` cannot be stored in Redis. Use a task queue (Celery, RQ)
+> for background work in multi-worker deployments.
+
+### Custom Backend
+
+Implement `SiloStorage` to plug in any data store:
+
+```python
+from flask_silo.storage import SiloStorage
+
+class PostgresStorage(SiloStorage):
+    def get_session(self, sid): ...
+    def set_session(self, sid, data): ...
+    def delete_session(self, sid): ...
+    def has_session(self, sid): ...
+    def all_sessions(self): ...
+    def session_count(self): ...
+    def all_sids(self): ...
+    def mark_expired(self, sid, timestamp): ...
+    def is_expired(self, sid): ...
+    def clear_expired(self, sid): ...
+    def prune_expired(self, max_age): ...
+    def expired_count(self): ...
+
+silo = Silo(app, storage=PostgresStorage())
+```
+
 ## The 410 Gone Pattern
 
 When a session expires, instead of silently creating a new empty session, Flask-Silo tracks the old SID and returns `410 Gone` on data-dependent endpoints:
@@ -291,17 +357,15 @@ if (response.status === 410) {
 
 ## Limitations & When Not to Use
 
-Flask-Silo stores session state **in-process** (Python dicts) and files on **local disk**. This is an intentional design choice for simplicity, but it comes with trade-offs you should understand:
+Flask-Silo's **default** storage backend (`InMemoryStorage`) keeps session state in-process. For multi-worker deployments, use `RedisStorage` (see [Storage Backends](#storage-backends) above).
 
-### Single-process only
+### Default backend is single-process
 
-If you deploy with multiple workers (`gunicorn -w 4`), each worker gets its own `_sessions` dict. A request hitting Worker A cannot see sessions created by Worker B. **You must run with a single worker** (`gunicorn -w 1`) or use a sticky-session load balancer.
-
-For multi-worker / multi-server deployments, use **Flask-Session** backed by Redis or a database instead.
+With the default `InMemoryStorage`, each Gunicorn worker gets its own `_sessions` dict. **Switch to `RedisStorage`** for multi-worker deployments, or run with a single worker (`gunicorn -w 1`).
 
 ### In-memory state is volatile
 
-All session data lives in process memory. If the server restarts, all sessions are lost. There is no persistence layer.
+With `InMemoryStorage`, all session data lives in process memory. If the server restarts, all sessions are lost. `RedisStorage` persists data in Redis, which survives server restarts.
 
 ### Not a replacement for a task queue
 
@@ -318,18 +382,18 @@ The `SessionStore` lock protects session creation and cleanup, but the returned 
 ### When Flask-Silo is a good fit
 
 - Internal tools, prototypes, and dashboards with a small number of concurrent users
-- Stateful workflows (upload -> process -> download) where setting up Redis/Celery is overkill
-- Single-process deployments behind Gunicorn, Waitress, or the Flask dev server
-- Applications where losing sessions on restart is acceptable
+- Stateful workflows (upload -> process -> download) where setting up Celery is overkill
+- Multi-worker deployments with `RedisStorage`
+- Single-process deployments with default `InMemoryStorage`
 
 ### When to use something else
 
 | Need | Use instead |
 |---|---|
-| Multi-worker / multi-server sessions | Flask-Session + Redis |
+| Non-JSON-serialisable session objects with Redis | Custom `SiloStorage` backend |
 | Durable background jobs | Celery or RQ |
 | Shared file storage across servers | AWS S3 / MinIO / shared volume |
-| Persistent state across restarts | Database (PostgreSQL, SQLite) |
+| Persistent state across restarts | `RedisStorage` or Database |
 
 ## Testing
 

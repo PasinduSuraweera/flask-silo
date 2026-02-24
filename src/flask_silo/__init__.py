@@ -46,6 +46,7 @@ from .cleanup import CleanupDaemon
 from .errors import NamespaceError, SessionBusy, SessionExpired, SiloError
 from .ext import Silo
 from .files import FileStore
+from .storage import InMemoryStorage, SiloStorage
 from .store import SessionStore
 from .tasks import BackgroundTask, TaskState
 
@@ -60,6 +61,9 @@ __all__ = [
     "BackgroundTask",
     "TaskState",
     "FileStore",
+    # Storage backends
+    "SiloStorage",
+    "InMemoryStorage",
     # Exceptions
     "SiloError",
     "SessionExpired",
