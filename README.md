@@ -6,6 +6,7 @@
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Typed](https://img.shields.io/badge/typing-PEP%20561-blueviolet.svg)]()
 [![Tests](https://github.com/PasinduSuraweera/flask-silo/actions/workflows/test.yml/badge.svg)](https://github.com/PasinduSuraweera/flask-silo/actions/workflows/test.yml)
+[![PyPI Downloads](https://static.pepy.tech/personalized-badge/flask-silo?period=total&units=NONE&left_color=GREY&right_color=GREEN&left_text=downloads)](https://pepy.tech/projects/flask-silo)
 
 ---
 
