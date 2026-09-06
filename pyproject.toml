@@ -73,6 +73,12 @@ line-length = 88
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]
 
+[tool.ruff.format]
+# Ruff >=0.16 formats Python blocks inside Markdown. Documentation snippets are
+# hand-formatted for readability (aligned comments, elided bodies), so keep the
+# formatter scoped to source files.
+exclude = ["*.md"]
+
 [tool.mypy]
 python_version = "3.10"
 strict = true
